@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import date
+import datetime
 import pandas as pd
 import numpy as np
 import altair as alt
@@ -9,7 +9,7 @@ COUNTRY = "countriesAndTerritories"
 
 st.title("Analysis of COVID 19 data")
 
-today = date.today().strftime("%B %d, %Y %H:%M")
+today = datetime.datetime.now().strftime("%B %d, %Y at %H:%M")
 
 st.markdown(f"Done on {today}.")
 
@@ -19,8 +19,8 @@ def download_data():
 
 text_loading = st.markdown("Loading data...")
 data = download_data().copy()
-text_loading.markdown(f"Data loaded, {data.size} records, "
-    "from European Centre for Disease Prevention and Control")
+text_loading.markdown(f"Data loaded: {data.size} records, "
+    "from European Centre for Disease Prevention and Control.")
 
 
 data['date'] = pd.to_datetime(data['dateRep'], dayfirst=True)
@@ -48,26 +48,33 @@ selected_country = st.selectbox("Select Countries:",
 def get_country_data(country:str):
     df = data[data[COUNTRY] == country]
     df.set_index('date', inplace=True)
+    df['relative'] = df['cases'] / df['popData2018']
     return df
-
-ma = st.slider("Moving average:", min_value=1,
-    max_value=40)
 
 df_country = get_country_data(selected_country)
 
-averaged_data = df_country[['cases']].rolling(ma).mean()
+population = df_country.iloc[0].popData2018 
+st.markdown(f"{selected_country} population in 2018: {population:,.0f}")
+
+ma = st.slider("Moving average:", min_value=1,
+    max_value=40)
+is_relative = st.sidebar.checkbox("Use population relative figures")
+
+
+column = 'cases' if not is_relative else 'relative'
+averaged_data = df_country[[column]].rolling(ma).mean()
 averaged_data.reset_index(inplace=True)
 
 # some debug for now
-#st.write(averaged_data.head())
-x_scale = (
-        alt.Scale(type="utc") 
-    )
+if show_sample:
+    st.write(averaged_data.head())
+
 c = alt.Chart(averaged_data).mark_line().encode(
-    alt.X("date:T", title="Date", scale=x_scale),
-    alt.Y("cases", title="Nb cases"),
-#    alt.Color("variable", title="", type="nominal"),
-#    alt.Tooltip(["date", "cases", "variable"]),
+    alt.X("date:T", title="Date"),
+    alt.Y("cases", title="Nb cases") if not is_relative
+        else  alt.Y("relative:Q", axis=alt.Axis(format='%'), title="% Cases"),
+    alt.Color("country", title="FR", type="nominal"),
+    alt.Tooltip(["date", column]),
 )
 #c = alt.generate_chart("line", averaged_data, 0, 0)
 
