@@ -7,6 +7,7 @@ import altair as alt
 DATA_URL = "https://opendata.ecdc.europa.eu/covid19/casedistribution/csv"
 COUNTRY = "countriesAndTerritories"
 
+st.image("images/covid19x100.jpeg")
 st.title("Analysis of COVID 19 data")
 
 today = datetime.datetime.now().strftime("%B %d, %Y at %H:%M")
@@ -24,58 +25,73 @@ text_loading.markdown(f"Data loaded: {data.size} records, "
 
 
 data['date'] = pd.to_datetime(data['dateRep'], dayfirst=True)
+data[COUNTRY] = data[COUNTRY].str.replace('_', ' ')
 data.sort_values(by='date', inplace=True)
 
 st.sidebar.header("Options")
 show_sample = st.sidebar.checkbox("Show data sample")
+is_relative = st.sidebar.checkbox("Use population relative figures")
+st.markdown("\n\n")
+st.markdown("\n")
+st.sidebar.info("License Information:\n\n"
+    + "Data downloaded from "
+    + "[ECDC](https://www.ecdc.europa.eu/en/copyright)")
+
+
+
 if show_sample:
     st.subheader("Sample Data:")
     st.write(data.sample(5))
 
-st.sidebar.markdown("License Information:\n"
-    + "Data downloaded from "
-    + "[ECDC](https://www.ecdc.europa.eu/en/copyright)")
 st.header("Country Analysis")
 countries = data[COUNTRY].unique()
 countries.sort()
 country_index = int(np.where(countries =='France')[0][0])
 
-selected_country = st.selectbox("Select Countries:",
+selected_countries = st.multiselect("Select Countries:",
     countries.tolist(),
-    index=country_index)
-
-@st.cache
-def get_country_data(country:str):
-    df = data[data[COUNTRY] == country]
-    df.set_index('date', inplace=True)
-    df['relative'] = df['cases'] / df['popData2018']
-    return df
-
-df_country = get_country_data(selected_country)
-
-population = df_country.iloc[0].popData2018 
-st.markdown(f"{selected_country} population in 2018: {population:,.0f}")
+    default=['France', 'Spain'])
 
 ma = st.slider("Moving average:", min_value=1,
     max_value=40)
-is_relative = st.sidebar.checkbox("Use population relative figures")
+
+@st.cache
+def get_country_data(country:str, is_relative:bool):
+    df = data[data[COUNTRY] == country]
+    df.set_index('date', inplace=True)
+    if is_relative:
+        df['cases'] = df['cases'] / df['popData2018']
+    df_country = df[['cases']]
+    return df_country
 
 
-column = 'cases' if not is_relative else 'relative'
-averaged_data = df_country[[column]].rolling(ma).mean()
-averaged_data.reset_index(inplace=True)
+df_all:pd.DataFrame = None
+for country in selected_countries:
+    df_country = get_country_data(country, is_relative).copy(deep=True)
+    averaged_data = df_country[['cases']].rolling(ma).mean()
+    averaged_data['Country'] = country
+    if df_all is None:
+        df_all = averaged_data
+    else:
+        df_all = pd.concat([df_all, averaged_data])
+
 
 # some debug for now
 if show_sample:
-    st.write(averaged_data.head())
+    st.write("Sample Data")
+    st.write(df_all.head())
 
-c = alt.Chart(averaged_data).mark_line().encode(
-    alt.X("date:T", title="Date"),
-    alt.Y("cases", title="Nb cases") if not is_relative
-        else  alt.Y("relative:Q", axis=alt.Axis(format='%'), title="% Cases"),
-    alt.Color("country", title="FR", type="nominal"),
-    alt.Tooltip(["date", column]),
+
+df_all.reset_index(inplace=True)
+chart_title=("Number of cases in Selected countries" if not is_relative
+    else "Proportion cases in overall population")
+c = alt.Chart(df_all, title=chart_title).mark_line().encode(
+    x='date:T',
+    y=(alt.Y('cases', axis=alt.Axis(format='%', title='% of population')) if is_relative
+        else alt.Y('cases', axis=alt.Axis(format=',.0f', title='Nb. of cases'))),
+    color='Country'
 )
-#c = alt.generate_chart("line", averaged_data, 0, 0)
 
 x = st.altair_chart(c, use_container_width=True)
+
+
