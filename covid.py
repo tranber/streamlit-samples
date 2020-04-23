@@ -52,6 +52,8 @@ selected_countries = st.multiselect("Select Countries:",
     countries.tolist(),
     default=['France', 'Spain'])
 
+serie = st.radio("Select data to analyze:", ['cases', 'deaths'],
+    format_func=str.capitalize)
 ma = st.slider("Moving average:", min_value=1,
     max_value=40)
 
@@ -60,15 +62,15 @@ def get_country_data(country:str, is_relative:bool):
     df = data[data[COUNTRY] == country]
     df.set_index('date', inplace=True)
     if is_relative:
-        df['cases'] = df['cases'] / df['popData2018']
-    df_country = df[['cases']]
+        df[serie] = df[serie] / df['popData2018']
+    df_country = df[[serie]]
     return df_country
 
 
 df_all:pd.DataFrame = None
 for country in selected_countries:
     df_country = get_country_data(country, is_relative).copy(deep=True)
-    averaged_data = df_country[['cases']].rolling(ma).mean()
+    averaged_data = df_country[[serie]].rolling(ma).mean()
     averaged_data['Country'] = country
     if df_all is None:
         df_all = averaged_data
@@ -83,12 +85,12 @@ if show_sample:
 
 
 df_all.reset_index(inplace=True)
-chart_title=("Number of cases in Selected countries" if not is_relative
-    else "Proportion cases in overall population")
+chart_title=(("Number of %s in Selected countries" % (serie)) if not is_relative
+    else ("Proportion of %s in overall population" % (serie)))
 c = alt.Chart(df_all, title=chart_title).mark_line().encode(
     x='date:T',
-    y=(alt.Y('cases', axis=alt.Axis(format='%', title='% of population')) if is_relative
-        else alt.Y('cases', axis=alt.Axis(format=',.0f', title='Nb. of cases'))),
+    y=(alt.Y(serie, axis=alt.Axis(format='%', title='% of population')) if is_relative
+        else alt.Y(serie, axis=alt.Axis(format=',.0f', title=('Nb. of %s'% (serie))))),
     color='Country'
 )
 
