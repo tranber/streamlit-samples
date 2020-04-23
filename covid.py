@@ -31,8 +31,8 @@ data.sort_values(by='date', inplace=True)
 st.sidebar.header("Options")
 show_sample = st.sidebar.checkbox("Show data sample")
 is_relative = st.sidebar.checkbox("Use population relative figures")
-st.markdown("\n\n")
-st.markdown("\n")
+log_scale = st.sidebar.checkbox("Use log scale")
+
 st.sidebar.info("License Information:\n\n"
     + "Data downloaded from "
     + "[ECDC](https://www.ecdc.europa.eu/en/copyright)")
@@ -89,8 +89,11 @@ chart_title=(("Number of %s in Selected countries" % (serie)) if not is_relative
     else ("Proportion of %s in overall population" % (serie)))
 c = alt.Chart(df_all, title=chart_title).mark_line().encode(
     x='date:T',
-    y=(alt.Y(serie, axis=alt.Axis(format='%', title='% of population')) if is_relative
-        else alt.Y(serie, axis=alt.Axis(format=',.0f', title=('Nb. of %s'% (serie))))),
+    y=(alt.Y(serie,
+        scale=alt.Scale(type=('symlog' if log_scale else 'linear')),
+        axis=alt.Axis(format=('%' if is_relative else ',.0f'),
+                      title=('% of population' if is_relative else ('Nb. of %s'% (serie)))),
+        )),
     color='Country'
 )
 
