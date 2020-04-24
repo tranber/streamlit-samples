@@ -31,6 +31,7 @@ data.sort_values(by='date', inplace=True)
 st.sidebar.header("Options")
 show_sample = st.sidebar.checkbox("Show data sample")
 is_relative = st.sidebar.checkbox("Use population relative figures")
+is_cumulative = st.sidebar.checkbox("Cumulative Sum")
 log_scale = st.sidebar.checkbox("Use log scale")
 
 st.sidebar.info("License Information:\n\n"
@@ -70,7 +71,11 @@ def get_country_data(country:str, is_relative:bool):
 df_all:pd.DataFrame = None
 for country in selected_countries:
     df_country = get_country_data(country, is_relative).copy(deep=True)
-    averaged_data = df_country[[serie]].rolling(ma).mean()
+    if is_cumulative:
+        averaged_data = df_country[[serie]].cumsum()
+        averaged_data = averaged_data.rolling(ma).mean()
+    else:
+        averaged_data = df_country[[serie]].rolling(ma).mean()
     averaged_data['Country'] = country
     if df_all is None:
         df_all = averaged_data
@@ -85,8 +90,9 @@ if show_sample:
 
 
 df_all.reset_index(inplace=True)
-chart_title=(("Number of %s in Selected countries" % (serie)) if not is_relative
-    else ("Proportion of %s in overall population" % (serie)))
+cumul = (" (Cumulated)" if is_cumulative else "")
+chart_title=(("Number of %s in Selected countries%s" % (serie, cumul)) if not is_relative
+    else ("Proportion of %s in overall population%s" % (serie, cumul)))
 c = alt.Chart(df_all, title=chart_title).mark_line().encode(
     x='date:T',
     y=(alt.Y(serie,
