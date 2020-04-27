@@ -20,7 +20,7 @@ def download_data():
 
 text_loading = st.markdown("Loading data...")
 data = download_data().copy()
-text_loading.markdown(f"Data loaded: {data.size} records, "
+text_loading.markdown(f"Data loaded: {data.size:,.0f} records, "
     "from European Centre for Disease Prevention and Control.")
 
 
