@@ -47,7 +47,6 @@ if show_sample:
 st.header("Country Analysis")
 countries = data[COUNTRY].unique()
 countries.sort()
-country_index = int(np.where(countries =='France')[0][0])
 
 selected_countries = st.multiselect("Select Countries:",
     countries.tolist(),
@@ -63,7 +62,8 @@ def get_country_data(country:str, is_relative:bool):
     df = data[data[COUNTRY] == country]
     df.set_index('date', inplace=True)
     if is_relative:
-        df[serie] = df[serie] / df['popData2018']
+        # compute nb of case per million
+        df[serie] = df[serie] / df['popData2018'] * 1_000_000
     df_country = df[[serie]]
     return df_country
 
@@ -92,13 +92,13 @@ if show_sample:
 df_all.reset_index(inplace=True)
 cumul = (" (Cumulated)" if is_cumulative else "")
 chart_title=(("Number of %s in Selected countries%s" % (serie, cumul)) if not is_relative
-    else ("Proportion of %s in overall population%s" % (serie, cumul)))
+    else ("Number of %s for 1M %s" % (serie, cumul)))
 c = alt.Chart(df_all, title=chart_title).mark_line().encode(
     x='date:T',
     y=(alt.Y(serie,
         scale=alt.Scale(type=('symlog' if log_scale else 'linear')),
-        axis=alt.Axis(format=('%' if is_relative else ',.0f'),
-                      title=('% of population' if is_relative else ('Nb. of %s'% (serie)))),
+        axis=alt.Axis(format=',.0f',
+                      title=(('Nb of %s per 1M habitant' % (serie)) if is_relative else ('Nb. of %s'% (serie)))),
         )),
     color='Country'
 )
