@@ -69,17 +69,15 @@ def get_country_data(country:str, series:str, is_relative:bool):
 df_all:pd.DataFrame = None
 for country in selected_countries:
     df_country = get_country_data(country, series, is_relative).copy(deep=True)
+    serie_data = df_country[[serie]]
     if is_cumulative:
-        averaged_data = df_country[[series]].cumsum()
-        averaged_data = averaged_data.rolling(ma).mean()
-    else:
-        averaged_data = df_country[[series]].rolling(ma).mean()
+        serie_data = serie_data.cumsum()
+    averaged_data = serie_data.rolling(ma).mean()
     averaged_data['Country'] = country
     if df_all is None:
         df_all = averaged_data
     else:
         df_all = pd.concat([df_all, averaged_data])
-
 
 # some debug for now
 if show_sample:
