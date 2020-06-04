@@ -2,7 +2,7 @@
 Experiment with Streamlit framework
 
 
-# Setup an environment
+# Environment setup using conda
 
 
 ```
@@ -11,20 +11,43 @@ conda create --name streamlit
 
 ## Activate it and configure it the first time
 ```
-conda activate streamlite
+conda activate streamlit
 pip install -r requirements.txt
 ```
 
 
 
-# Next time, activate it
+## Next time, activate it
 
 ```
-conda activate streamlite
+conda activate streamlit
 ```
+
+
+# Environment setup using venv
+
+```
+python3 -m venv venv
+```
+
+## Activate it and configure it the first time
+```
+. ./venv/bin/activate
+pip install -r requirements.txt
+```
+
+
+## Next time, activate it
+
+```
+. ./venv/bin/activate
+```
+
 
 # Run app
 
 ```
-streamlite run <appname>
+streamlit run covid.py
 ```
+
+Then open the browser at the specified address.
