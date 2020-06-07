@@ -11,7 +11,6 @@ st.image("images/covid19x100.jpeg")
 st.title("Analysis of COVID 19 data")
 
 today = datetime.datetime.now().strftime("%B %d, %Y at %H:%M")
-
 st.markdown(f"Done on {today}.")
 
 @st.cache
@@ -39,7 +38,6 @@ st.sidebar.info("License Information:\n\n"
     + "[ECDC](https://www.ecdc.europa.eu/en/copyright)")
 
 
-
 if show_sample:
     st.subheader("Sample Data:")
     st.write(data.sample(5))
@@ -52,30 +50,30 @@ selected_countries = st.multiselect("Select Countries:",
     countries.tolist(),
     default=['France', 'Spain'])
 
-serie = st.radio("Select data to analyze:", ['cases', 'deaths'],
+series = st.radio("Select data to analyze:", ['cases', 'deaths'],
     format_func=str.capitalize)
 ma = st.slider("Moving average:", min_value=1,
     max_value=40)
 
 @st.cache
-def get_country_data(country:str, is_relative:bool):
+def get_country_data(country:str, series:str, is_relative:bool):
     df = data[data[COUNTRY] == country]
     df.set_index('date', inplace=True)
     if is_relative:
         # compute nb of case per million
-        df[serie] = df[serie] / df['popData2018'] * 1_000_000
-    df_country = df[[serie]]
+        df[series] = df[series] / df['popData2018'] * 1_000_000
+    df_country = df[[series]]
     return df_country
 
 
 df_all:pd.DataFrame = None
 for country in selected_countries:
-    df_country = get_country_data(country, is_relative).copy(deep=True)
+    df_country = get_country_data(country, series, is_relative).copy(deep=True)
     if is_cumulative:
-        averaged_data = df_country[[serie]].cumsum()
+        averaged_data = df_country[[series]].cumsum()
         averaged_data = averaged_data.rolling(ma).mean()
     else:
-        averaged_data = df_country[[serie]].rolling(ma).mean()
+        averaged_data = df_country[[series]].rolling(ma).mean()
     averaged_data['Country'] = country
     if df_all is None:
         df_all = averaged_data
@@ -91,14 +89,14 @@ if show_sample:
 
 df_all.reset_index(inplace=True)
 cumul = (" (Cumulated)" if is_cumulative else "")
-chart_title=(("Number of %s in Selected countries%s" % (serie, cumul)) if not is_relative
-    else ("Number of %s for 1M %s" % (serie, cumul)))
+chart_title = (("Number of %s in Selected countries%s" % (series, cumul)) if not is_relative
+    else ("Number of %s for 1M %s" % (series, cumul)))
 c = alt.Chart(df_all, title=chart_title).mark_line().encode(
     x='date:T',
-    y=(alt.Y(serie,
+    y=(alt.Y(series,
         scale=alt.Scale(type=('symlog' if log_scale else 'linear')),
         axis=alt.Axis(format=',.0f',
-                      title=(('Nb of %s per 1M habitant' % (serie)) if is_relative else ('Nb. of %s'% (serie)))),
+                      title=(('Nb of %s per 1M habitant' % (series)) if is_relative else ('Nb. of %s'% (series)))),
         )),
     color='Country'
 )
