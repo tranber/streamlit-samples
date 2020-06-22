@@ -67,7 +67,7 @@ def get_country_data(country:str, series:str, is_relative:bool):
     df.set_index('date', inplace=True)
     if is_relative:
         # compute nb of case per million
-        df[series] = df[series] / df['popData2018'] * 1_000_000
+        df.loc[series,:] = df[series] / df['popData2019'] * 1_000_000
     df_country = df[[series]]
     return df_country
 
