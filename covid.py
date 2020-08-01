@@ -86,6 +86,7 @@ def prepare_data(countries:Sequence[str], series:str, ma:int, is_relative:bool, 
             df_all = averaged_data
         else:
             df_all = pd.concat([df_all, averaged_data])
+    df_all.reset_index(inplace=True)
     return df_all
 
 df_all = prepare_data(selected_countries, series, ma, is_relative, is_cumulative)
@@ -96,7 +97,6 @@ if show_sample:
     st.write(df_all.head())
 
 # Configure graph
-df_all.reset_index(inplace=True)
 cumul = (" (Cumulated)" if is_cumulative else "")
 chart_title = (("Number of %s in Selected countries%s" % (series, cumul)) if not is_relative
     else ("Number of %s for 1M %s" % (series, cumul)))
@@ -107,7 +107,9 @@ c = alt.Chart(df_all, title=chart_title).mark_line().encode(
         axis=alt.Axis(format=',.0f',
                       title=(('Nb of %s per 1M habitant' % (series)) if is_relative else ('Nb. of %s'% (series)))),
         )),
-    color='Country'
+#    color='Country'
+    color=alt.Color('Country', scale=alt.Scale(domain=selected_countries))
+
 )
 
 x = st.altair_chart(c, use_container_width=True)
