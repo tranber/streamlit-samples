@@ -32,7 +32,7 @@ data.sort_values(by='date', inplace=True)
 # Configure Sidebar
 st.sidebar.header("Options")
 show_sample = st.sidebar.checkbox("Show data sample")
-is_relative = st.sidebar.checkbox("Use population relative figures")
+is_relative = st.sidebar.checkbox("Use population relative figures", value=True)
 is_cumulative = st.sidebar.checkbox("Cumulative Sum")
 log_scale = st.sidebar.checkbox("Use log scale")
 
@@ -59,7 +59,7 @@ selected_countries = st.multiselect("Select Countries:",
 series = st.radio("Select data to analyze:", ['cases', 'deaths'],
     format_func=str.capitalize)
 ma = st.slider("Moving average:", min_value=1,
-    max_value=40)
+    max_value=40, value=7)
 
 @st.cache
 def get_country_data(country:str, series:str, is_relative:bool):
@@ -107,9 +107,8 @@ c = alt.Chart(df_all, title=chart_title).mark_line().encode(
         axis=alt.Axis(format=',.0f',
                       title=(('Nb of %s per 1M habitant' % (series)) if is_relative else ('Nb. of %s'% (series)))),
         )),
-#    color='Country'
+    # Specify domain so that colors are fixed
     color=alt.Color('Country', scale=alt.Scale(domain=selected_countries))
-
 )
 
 x = st.altair_chart(c, use_container_width=True)
