@@ -7,6 +7,9 @@ from typing import Sequence, List, Optional, Dict
 from sklearn.cluster import KMeans
 from collections import defaultdict
 
+st.set_page_config(page_title='Covid data analysis',
+    layout='wide', initial_sidebar_state='expanded')
+
 
 DATA_URL = "https://opendata.ecdc.europa.eu/covid19/casedistribution/csv"
 COUNTRY = "countriesAndTerritories"
@@ -88,8 +91,11 @@ def prepare_data(data:pd.DataFrame, countries:Sequence[str], series:str, ma:int,
 def page_country_analysis():
     # Header and load data
 
-    st.image("images/covid19x100.jpeg")
-    st.title("Analysis of COVID 19 data")
+    col1, col2 = st.beta_columns([1, 4])
+    with col1:
+        st.image("images/covid19x100.jpeg")
+    with col2:
+        st.title("Analysis of COVID 19 data")
 
     today = datetime.datetime.now().strftime("%B %d, %Y at %H:%M")
     st.markdown(f"Done on {today}.")
@@ -166,8 +172,11 @@ def run_clustering(clus_data, nb_clusters):
 
 
 def page_clustering_countries():
-    st.image("images/covid19x100.jpeg")
-    st.title("Clustering Countries Data")
+    col1, col2 = st.beta_columns([1, 4])
+    with col1:
+        st.image("images/covid19x100.jpeg")
+    with col2:
+        st.title("Clustering Countries Data")
 
     countries = get_countries_names()
     population_for = get_population_by_country()
