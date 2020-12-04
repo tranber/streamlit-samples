@@ -3,17 +3,23 @@ import datetime
 import pandas as pd
 import numpy as np
 import altair as alt
+import plotly.express as px
 from typing import Sequence, List, Optional, Dict
 from sklearn.cluster import KMeans
 from collections import defaultdict
+from enum import Enum
 
 st.set_page_config(page_title='Covid data analysis',
     layout='wide', initial_sidebar_state='expanded')
 
-
 DATA_URL = "https://opendata.ecdc.europa.eu/covid19/casedistribution/csv"
 COUNTRY = "countriesAndTerritories"
 POPULATION = 'popData2019'
+
+class ChartType(Enum):
+    ALTAIR = "Altair"
+    PLOTLY = "Plotly"
+
 
 @st.cache(ttl=60*60)
 def get_original_data() -> pd.DataFrame:
@@ -70,7 +76,8 @@ def human_format_number(n):
 
 
 # Prepare dataframe for plotting: extract countries, average, ...
-def prepare_data(data:pd.DataFrame, countries:Sequence[str], series:str, ma:int, is_relative:bool, is_cumulative:bool) -> pd.DataFrame:
+def prepare_data(data:pd.DataFrame, countries:Sequence[str], series:str, ma:int, is_relative:bool, is_cumulative:bool,
+        pivoting:bool=False) -> pd.DataFrame:
     df_all: pd.DataFrame = None
     for country in countries:
         df_country = get_country_data(data, country, series, is_relative).copy(deep=True)
@@ -78,11 +85,16 @@ def prepare_data(data:pd.DataFrame, countries:Sequence[str], series:str, ma:int,
         if is_cumulative:
             serie_data = serie_data.cumsum()
         averaged_data = serie_data.rolling(ma).mean()
-        averaged_data['Country'] = country
+        if not pivoting:
+            averaged_data['Country'] = country
         if df_all is None:
             df_all = averaged_data
         else:
-            df_all = pd.concat([df_all, averaged_data])
+            if pivoting:
+                df_all[country] = averaged_data
+            else:
+                df_all = pd.concat([df_all, averaged_data])
+    #if not pivoting:
     df_all.reset_index(inplace=True)
     return df_all
 
@@ -122,29 +134,42 @@ def page_country_analysis():
     selected_countries_pop = ', '.join(['%s (%s)' % (c, human_format_number(population_for[c])) for c in selected_countries])
     st.write(selected_countries_pop)
 
-    df_all = prepare_data(data, selected_countries, series, ma, is_relative, is_cumulative)
+    df_all = prepare_data(data, selected_countries, series, ma, is_relative, is_cumulative, pivoting=False)
 
-    # some debug for now
     if show_sample:
         st.write("Sample Data")
-        st.write(df_all.head())
+        st.write(df_all)
 
     # Configure graph
     cumul = (" (Cumulated)" if is_cumulative else "")
     chart_title = (("Number of %s in Selected countries%s" % (series, cumul)) if not is_relative
         else ("Number of %s for 1M %s" % (series, cumul)))
-    c = alt.Chart(df_all, title=chart_title).mark_line().encode(
-        x='date:T',
-        y=(alt.Y(series,
-            scale=alt.Scale(type=('symlog' if log_scale else 'linear')),
-            axis=alt.Axis(format=',.0f',
-                        title=(('Nb of %s per 1M habitant' % (series)) if is_relative else ('Nb. of %s'% (series)))),
-            )),
-        # Specify domain so that colors are fixed
-        color=alt.Color('Country', scale=alt.Scale(domain=selected_countries))
-    )
 
-    x = st.altair_chart(c, use_container_width=True)
+    if chart_type == ChartType.ALTAIR:
+        c = alt.Chart(df_all, title=chart_title).mark_line().encode(
+            x='date:T',
+            y=(alt.Y(series,
+                scale=alt.Scale(type=('symlog' if log_scale else 'linear')),
+                axis=alt.Axis(format=',.0f',
+                            title=(('Nb of %s per 1M habitant' % (series)) if is_relative else ('Nb. of %s'% (series)))),
+                )),
+            # Specify domain so that colors are fixed
+            color=alt.Color('Country', scale=alt.Scale(domain=selected_countries))
+        )
+        x = st.altair_chart(c, use_container_width=True)
+    else:
+        country_cols = list(df_all.columns)
+        country_cols.remove("date")
+        fig = px.line(df_all, title=chart_title, color='Country',
+            x="date", y=series,
+            template='none')
+        fig.update_traces(hovertemplate="<b>%{x|%a %B %d}</b><br>"
+            + "%{y}")
+        fig.update_layout(hovermode="closest")
+        if log_scale:
+            fig.update_yaxes(type="log")
+        st.plotly_chart(fig, use_container_width=True)
+
 
 
 # prepare data for clustering
@@ -215,18 +240,31 @@ def page_clustering_countries():
     df_centro.reset_index(inplace=True)
     cluster_names = ['Cluster %d' % (i+1) for i in range(0, nb_clusters)]
 
-    clus_chart = alt.Chart(df_centro, title='Clusters').mark_line().encode(
-        x='index',
-        y=(alt.Y(series,
-            scale=alt.Scale(type=('symlog' if log_scale else 'linear')),
-            axis=alt.Axis(format=',.0f',
-                        title=(('Nb of %s per 1M habitant' % (series)) if is_relative else ('Nb. of %s'% (series)))),
-            )),
-        # Specify domain so that colors are fixed
-        color=alt.Color('Cluster', scale=alt.Scale(domain=cluster_names))
-    )
 
-    x2 = st.altair_chart(clus_chart, use_container_width=True)
+    if show_sample:
+        st.write(df_centro)
+
+    x_title = (('Nb of %s per 1M habitant' % (series)) if is_relative else ('Nb. of %s'% (series)))
+    if chart_type == ChartType.ALTAIR:
+        clus_chart = alt.Chart(df_centro, title='Clusters profiles').mark_line().encode(
+            x='index',
+            y=(alt.Y(series,
+                scale=alt.Scale(type=('symlog' if log_scale else 'linear')),
+                axis=alt.Axis(format=',.0f', title=x_title),
+                )),
+            # Specify domain so that colors are fixed
+            color=alt.Color('Cluster', scale=alt.Scale(domain=cluster_names))
+        )
+
+        x2 = st.altair_chart(clus_chart, use_container_width=True)
+    else:
+        fig = px.line(df_centro, title='Clusters profiles', color='Cluster',
+            x="index", y=series,
+            template='none')
+        fig.update_layout(hovermode="closest")
+        if log_scale:
+            fig.update_yaxes(type="log")
+        st.plotly_chart(fig, use_container_width=True)
 
     cluster_indexes = kmeans.labels_
     clusters_countries = defaultdict(list)
@@ -258,6 +296,8 @@ ma = st.sidebar.slider("Moving average:", min_value=1,
 
 
 st.sidebar.header("Options")
+chart_type = st.sidebar.radio("Chart type:", [ChartType.ALTAIR, ChartType.PLOTLY],
+    format_func=lambda x: x.value)
 show_sample = st.sidebar.checkbox("Show data sample")
 is_relative = st.sidebar.checkbox("Use population relative figures", value=True)
 is_cumulative = st.sidebar.checkbox("Cumulative Sum")
