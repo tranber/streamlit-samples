@@ -26,6 +26,8 @@ def get_original_data() -> pd.DataFrame:
     """Get the raw data, adding a date field, and removing the _ in country names
     """
     data = pd.read_csv(DATA_URL)
+    # Adjust column names now that data are agreggated by week
+    data.rename(columns={"cases_weekly": "cases", "deaths_weekly": "deaths"}, inplace=True)
 
     data['date'] = pd.to_datetime(data['dateRep'], dayfirst=True)
     data[COUNTRY] = data[COUNTRY].str.replace('_', ' ')
@@ -115,7 +117,8 @@ def page_country_analysis():
     text_loading = st.markdown("Loading data...")
     data = get_original_data()
     text_loading.markdown(f"Data loaded: {data.size:,.0f} records, "
-        "from European Centre for Disease Prevention and Control.")
+        "from European Centre for Disease Prevention and Control.\n\n" +
+        "Number of cases and deaths are cumulated by week.")
  
     if show_sample:
         st.subheader("Sample Data:")
@@ -292,7 +295,7 @@ st.sidebar.header("Analysis type")
 series = st.sidebar.radio("Select data to analyze:", ['cases', 'deaths'],
     format_func=str.capitalize)
 ma = st.sidebar.slider("Moving average:", min_value=1,
-    max_value=40, value=7)
+    max_value=8, value=1)
 
 
 st.sidebar.header("Options")
