@@ -296,13 +296,13 @@ series = st.sidebar.radio("Select data to analyze:", ['cases', 'deaths'],
     format_func=str.capitalize)
 ma = st.sidebar.slider("Moving average:", min_value=1,
     max_value=8, value=1)
+is_relative = st.sidebar.checkbox("Use population relative figures", value=True)
 
 
 st.sidebar.header("Options")
 chart_type = st.sidebar.radio("Chart type:", [ChartType.ALTAIR, ChartType.PLOTLY],
     format_func=lambda x: x.value)
 show_sample = st.sidebar.checkbox("Show data sample")
-is_relative = st.sidebar.checkbox("Use population relative figures", value=True)
 is_cumulative = st.sidebar.checkbox("Cumulative Sum")
 log_scale = st.sidebar.checkbox("Use log scale")
 
