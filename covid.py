@@ -105,7 +105,7 @@ def prepare_data(data:pd.DataFrame, countries:Sequence[str], series:str, ma:int,
 def page_country_analysis():
     # Header and load data
 
-    col1, col2 = st.beta_columns([1, 4])
+    col1, col2 = st.columns([1, 4])
     with col1:
         st.image("images/covid19x100.jpeg")
     with col2:
@@ -200,7 +200,7 @@ def run_clustering(clus_data, nb_clusters):
 
 
 def page_clustering_countries():
-    col1, col2 = st.beta_columns([1, 4])
+    col1, col2 = st.columns([1, 4])
     with col1:
         st.image("images/covid19x100.jpeg")
     with col2:
